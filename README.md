@@ -6,6 +6,7 @@ Characterizer of exoplanet atmospheric parameters.
 - [ ] Экспоненциальный рост температуры в плотных слоях атмосферы
 
 Остальное:
+- [ ] Обработка ошибок через throw, чтобы не плодить std::cout << .....;
 - [ ] Замена if/else с temp.m/temp.c на функцию void setTempAny() с универсальной переменной temp_any. 
 - [ ] Дебаг функции getRGM (завышенные значения)
 - [ ] Обработка log_g должным образом
