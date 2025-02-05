@@ -1,18 +1,18 @@
 #include "PlanetData.h"
 #include "csv.h"
+#include <algorithm>
+#include <boost/math/special_functions/expint.hpp> // Boost library for expn
+#include <cctype>
 #include <chrono>
 #include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <string>
-#include <thread>
-#include <vector>
-#include <algorithm>
-#include <boost/math/special_functions/expint.hpp> // Boost library for expn
-#include <cctype>
 #include <termios.h>
+#include <thread>
 #include <unistd.h>
+#include <vector>
 
 using namespace std;
 
@@ -24,9 +24,9 @@ using namespace std;
 ///////////////////////////////////////
 
 #define _USE_MATH_DEFINES // M_PI, M_E, etc.
-#define KEY_UP 65    // Клавиша Вверх
-#define KEY_DOWN 66  // Клавиша Вниз
-#define KEY_ENTER 10 // Клавиша ENTER
+#define KEY_UP 65         // Клавиша Вверх
+#define KEY_DOWN 66       // Клавиша Вниз
+#define KEY_ENTER 10      // Клавиша ENTER
 
 RowData pdata; // Импорт данных из PlanetData.h
 
@@ -136,10 +136,10 @@ void csvParser() {
 //                                   //
 ///////////////////////////////////////
 
-const double sec_per_day = 86400.0; // секунд в дне
-const double au_to_meters = 1.496e11; // метров в 1 астрономической единице
-const double jupiter_mass = 1.898e27; // масса Юпитера в КГ
-const double sun_mass = 1.989e30; // масса Солнца в КГ
+const double sec_per_day = 86400.0;       // секунд в дне
+const double au_to_meters = 1.496e11;     // метров в 1 астрономической единице
+const double jupiter_mass = 1.898e27;     // масса Юпитера в КГ
+const double sun_mass = 1.989e30;         // масса Солнца в КГ
 const double jupiter_radius_m = 69911000; // радиус Юпитера в КГ
 
 float temp_any = -274;
@@ -191,7 +191,7 @@ void getKeplerThird() {
             // Вычисляем период T
             double squared_period = (4 * M_PI * M_PI * pow(pdata.semi_major_axis, 3)) / (G * (pdata.star_mass + pdata.mass));
             pdata.orbital_period = sqrt(squared_period); // Извлекаем квадратный корень
-            fromSIToSource(); // Преобразуем результат в нужные единицы
+            fromSIToSource();                            // Преобразуем результат в нужные единицы
             std::cout << "KT: T = " << pdata.orbital_period << " дней" << std::endl;
         } else if (pdata.semi_major_axis <= 0) {
             // Вычисляем большую полуось a
@@ -265,11 +265,12 @@ void getRGM() {
 
 // Избавление от pdata.temp_any
 void getTempAny() {
-    if (pdata.temp_calculated > -274) 
+    if (pdata.temp_calculated > -274)
         temp_any = pdata.temp_calculated;
-    if (pdata.temp_measured > -274) 
+    if (pdata.temp_measured > -274)
         temp_any = pdata.temp_measured; // бОльший приоритет измеренной температуре, нежели посчитанной по T_eff
-    else std::cout << "Нет температуры\n";
+    else
+        std::cout << "Нет температуры\n";
 }
 
 void getBondAlbedo() {
@@ -291,32 +292,36 @@ void catchErrors() {
 
 int is_Dwarf = 0;
 int is_EGP = 0;
-int is_EIP;
+int is_EIP = 0;
 int is_ETP = 0;
 int is_EEP = 0;
-int max_is_value = 10;
+const int max_is_value = 8;
+
+// 33-31-34-36-32
 
 // Brown Dwarf
 void isThisDwarf() {
-    if (pdata.mass > 13.6) is_Dwarf++; // для минимального порога поставлена масса, при которой начинается синтез дейтерия
+    if (pdata.mass > 13.6) is_Dwarf = max_is_value; // для минимального порога поставлена масса, при которой начинается синтез дейтерия
     if (pdata.radius >= 0.7 && pdata.radius <= 1.4) is_Dwarf++;
     if (pdata.log_g >= 4.5) is_Dwarf++;
     if (temp_any > 800) is_Dwarf++;
 
-    std::string bars(is_EGP, '|');
-    std::string remainingBars((max_is_value - is_EGP), '|');
-    std::cout << "[" << colTxt(bars, 31).str() << colTxt(remainingBars, 30).str() << "] D" << std::endl;
+    if (is_Dwarf > max_is_value) is_Dwarf = max_is_value;
+
+    std::string bars(is_Dwarf, '|');
+    std::string remainingBars((max_is_value - is_Dwarf), '|');
+    std::cout << "[" << colTxt(bars, 33).str() << colTxt(remainingBars, 30).str() << "] D" << std::endl;
 }
 
 // Extrasolar Giant Planet
 void isThisEGP() {
     // для минимального порога поставлена масса WASP-193 Ab, "самого легкого газового гиганта"
     // для максимального порога поставлена масса, при которой начинается синтез дейтерия
-    if (pdata.mass > 0.138 && pdata.mass <= 13.2) is_EGP++;
-    if (pdata.radius > 0.91) is_EGP++; // >10R⊕
-    if (temp_any > 80) is_EGP++;
-    if (pdata.log_g > 2.5) is_EGP++;
-    
+    if (pdata.mass > 0.138 && pdata.mass <= 13.2) is_EGP += 3;
+    if (pdata.radius > 0.91) is_EGP += 3; // >10R⊕
+    if (temp_any > 80) is_EGP += 2;
+    if (pdata.log_g > 2.5) is_EGP += 2;
+
     // Maximum theoretical size limit assumed for a ~ 5 MJ mass object right after formation, however, for 'arbitrary initial conditions'.
     if (pdata.mass >= 4 && pdata.radius >= 7) is_EGP = max_is_value;
 
@@ -327,25 +332,28 @@ void isThisEGP() {
 
 // Extrasolar Ice Planet (Ice Giant)
 void isThisEIP() {
-    std::string bars(is_EGP, '|');
-    std::string remainingBars((max_is_value - is_EGP), '|');
-    std::cout << "[" << colTxt(bars, 31).str() << colTxt(remainingBars, 30).str() << "] I" << std::endl;
+    if (pdata.radius <= 0.55 && pdata.radius >= 0.31) is_EIP += 4; // 1.9 < R < 3.9 R⊕
+    if (pdata.mass > 0.014 && pdata.mass <= 0.10) is_EIP += 4;
+
+    std::string bars(is_EIP, '|');
+    std::string remainingBars((max_is_value - is_EIP), '|');
+    std::cout << "[" << colTxt(bars, 34).str() << colTxt(remainingBars, 30).str() << "] I" << std::endl;
 }
 
 // Extrasolar Transitional Planet
 void isThisETP() {
-    if (pdata.radius <= 0.36 && pdata.radius >= 0.173) is_ETP++; // 1.9 < R < 3.9 R⊕
-    if (pdata.mass > 0.006 && pdata.mass <= 0.03) is_ETP++;
+    if (pdata.radius <= 0.36 && pdata.radius >= 0.173) is_ETP += 4; // 1.9 < R < 3.9 R⊕
+    if (pdata.mass > 0.006 && pdata.mass <= 0.03) is_ETP += 4;
 
     std::string bars(is_ETP, '|');
     std::string remainingBars((max_is_value - is_ETP), '|');
-    std::cout << "[" << colTxt(bars, 33).str() << colTxt(remainingBars, 30).str() << "] T" << std::endl;
+    std::cout << "[" << colTxt(bars, 36).str() << colTxt(remainingBars, 30).str() << "] T" << std::endl;
 }
 
 // Extrasolar Earth Planet
 void isThisEEP() {
-    if (pdata.radius <= 0.173) is_EEP++; // < 1.9R⊕
-    if (pdata.mass <= 0.01) is_EEP++;
+    if (pdata.radius <= 0.173 && pdata.radius >= 0) is_EEP += 4; // < 1.9R⊕
+    if (pdata.mass >= 0 && pdata.mass <= 0.01) is_EEP += 4;
 
     std::string bars(is_EEP, '|');
     std::string remainingBars((max_is_value - is_EEP), '|');
@@ -357,8 +365,8 @@ void isThisAnyOfEarth() {
     int is_mEarth = 0;
     int is_sEarth = 0;
 
-    if (pdata.mass <= 0.03) is_mEarth++;
-    if (pdata.mass > 0.03) is_sEarth++;
+    if (pdata.mass <= 0.005) is_mEarth++;
+    if (pdata.mass > 0.007) is_sEarth++;
 
     std::vector<int> values = {is_mEarth, is_sEarth};
     std::vector<std::string> names = {"Это мини-земля", "Это супер-земля"};
@@ -386,13 +394,13 @@ void isThisTheSudarskyPlanet() {
 
     if (bond_albedo >= 0.81) is_classII++;
     if (temp_any >= 195 && temp_any < 250) is_classII++;
-    
+
     if (bond_albedo >= 0.09 && bond_albedo < 0.20) is_classIII++;
     if (temp_any >= 350 && temp_any < 800) is_classIII++;
-    
-    if (bond_albedo < 0.09) is_classIV++;
+
+    if (bond_albedo < 0.09 && bond_albedo > 0) is_classIV++;
     if (temp_any >= 800 && temp_any < 1050) is_classIV++;
-    
+
     if (bond_albedo > 0.50 && bond_albedo < 0.60) is_classV++;
     if (temp_any >= 1050) is_classV++;
 
@@ -401,8 +409,6 @@ void isThisTheSudarskyPlanet() {
     if (is_classIII > 0) is_sudarsky = is_sudarsky + is_classIII / 3.0;
     if (is_classIV > 0) is_sudarsky = is_sudarsky + is_classIV / 3.0;
     if (is_classV > 0) is_sudarsky = is_sudarsky + is_classV / 3.0;
-
-
 
     std::vector<int> is_class = {is_classI, is_classII, is_classIII, is_classIV, is_classV};
     std::vector<int> ints = {2, 4, 6, 8, 10};
@@ -418,7 +424,7 @@ void isThisTheSudarskyPlanet() {
 }
 
 // Вызов всех функций для main()
-void gadanieCall(){
+void gadanieCall() {
     isThisDwarf();
     isThisEGP();
     isThisEIP();
@@ -438,12 +444,24 @@ void gadanieResults() {
             max_index = i;
         }
     }
-    std::cout << names[max_index] << std::endl; // Выводим максимальное значение
-    if (values[max_index] == is_EGP) isThisTheSudarskyPlanet();
-    if (values[max_index] == is_EEP) isThisAnyOfEarth();
+
+    // Проверяем, есть ли другие элементы с таким же максимальным значением
+    bool is_ambiguous = false;
+    for (int i = 0; i < values.size(); ++i) {
+        if (i != max_index && values[i] == values[max_index]) {
+            is_ambiguous = true;
+            break;
+        }
+    }
+
+    if (is_ambiguous) {
+        std::cout << "Неопределенный тип" << std::endl;
+    } else {
+        std::cout << names[max_index] << std::endl; // Выводим максимальное значение
+        if (values[max_index] == is_EGP) isThisTheSudarskyPlanet();
+        if (values[max_index] == is_EEP) isThisAnyOfEarth();
+    }
 }
-
-
 ///////////////////////////////////////
 //                                   //
 //             ЧАСТЬ IV              //
@@ -459,7 +477,7 @@ double tpprofile(float m, float m0, float t_int, float t_irr, float kappa_S, flo
     float kappa_L = kappa_0 + kappa_cia * m / m0; // при S > L - возникновение температурной инверсии
     float beta_S = kappa_S * m / beta_S0;         // параметр рассеяния
     float coeff1 = 0.25 * std::pow(t_int, 4);     // коэфф. перед первыми квадратными скобками
-    float coeff2 = 0.125 * std::pow(t_irr, 4);    // коэфф. перед вторыми квадратными скобками
+    float coeff2 = 0.125 * std::pow(t_irr, 4) * (1.0 - albedo);    // коэфф. перед вторыми квадратными скобками
     float term1 =
         1.0 / el1 +
         m / (el3 * pow(beta_L0, 2)) *
@@ -473,42 +491,64 @@ double tpprofile(float m, float m0, float t_int, float t_irr, float kappa_S, flo
         kappa_0 * beta_S0 / (el3 * kappa_S * pow(beta_L0, 2)) *
         (1.0 / 3 - boost::math::expint(4, beta_S));
     float term4 =
-        kappa_cia * pow(beta_S0, 2) / (el3 * m0 * pow(kappa_S, 2) * pow(beta_L0, 2)) *
+        kappa_cia * pow(beta_S0, 2) / (el3 * m0 * pow(kappa_S, 2) * 
+        pow(beta_L0, 2)) *
         (0.5 - boost::math::expint(3, beta_S));
     float result = pow((coeff1 * term1 + coeff2 * (term2 + term3 + term4)), 0.25);
     return result;
 }
 
 void tpoutput() {
+    const double rsun_to_cm = 6.9566e10;
+    const double au_to_cantimeters = 1.49598e13;
+    pdata.semi_major_axis = pdata.semi_major_axis * au_to_cantimeters;
+    pdata.star_radius = pdata.star_radius * rsun_to_cm;
+    
     float t_irr = pow(2, 0.5) * pdata.star_teff * pow((pdata.star_radius / (2 * pdata.semi_major_axis)), 0.5) * pow((1 - bond_albedo), 0.25);
-    float g = pdata.surface_gravity * 1e2;                   // ускорение свободного падения в СГС
-    float kappa_S0 = 0.85;                                   // коротковолновая прозрачность; ↗↗ - возникновение антипарникового эффекта
-    float kappa_0 = 0.02;                                    // ИК и near-ИК прозрачность - влияет на kappa_L
-    float kappa_cia = 0.9;                                   // CIA opacity normalization
-    float beta_S0 = (1 - bond_albedo) / (1 + bond_albedo);   // коротковолновый параметр рассеяния; ↗↗ - Ab ↘↘; весь TPP смещается на более низкие температуры из-за зависимости от (1 - Ab)
-    float beta_L0 = 1.0;                                     // длинноволновый параметр рассеяния; ↘↘ - TPP смещается в более теплую область
-    float el1 = 3.0 / 8.0;                                   // первый длинноволновый коэффициент Эддингтона
-    float el3 = 1.0 / 3.0;                                   // второй длинноволновый коэффициент Эддингтона
+    
+    pdata.semi_major_axis = pdata.semi_major_axis / au_to_cantimeters;
+    pdata.star_radius = pdata.star_radius / rsun_to_cm;
 
-    std::vector<double> logp;                                                       // логарифм p
+    float g = pdata.surface_gravity * 1e2;                 // ускорение свободного падения в СГС
+    float kappa_S0 = 0.05;                                 // коротковолновая прозрачность; ↗↗ - возникновение антипарникового эффекта
+    float kappa_0 = 0.02;                                  // ИК и near-ИК прозрачность - влияет на kappa_L
+    float kappa_cia = 0.01;                                 // CIA opacity normalization
+    float beta_S0 = (1 - bond_albedo) / (1 + bond_albedo); // коротковолновый параметр рассеяния; ↗↗ - Ab ↘↘; весь TPP смещается на более низкие температуры из-за зависимости от (1 - Ab)
+    float beta_L0 = 1.0;                                   // длинноволновый параметр рассеяния; ↘↘ - TPP смещается в более теплую область
+    float el1 = 3.0 / 8.0;                                 // первый длинноволновый коэффициент Эддингтона
+    float el3 = 1.0 / 3.0;                                 // второй длинноволновый коэффициент Эддингтона
+
+    std::vector<double> logp; // логарифм p
     std::vector<double> pressure;
     std::vector<double> m;
-    double bar2cgs = 1e6;                                                           // бар -> СГС единицы
+    double bar2cgs = 1e6; // бар -> СГС единицы
+    float temp_max = temp_any * 5.2;
 
-    for (float p = -5.0; p <= 2.01; p += 0.01) { logp.push_back(p); }              // добавление значения десятичного логарифма давления в массив logp
-    for (double logp_val : logp) { pressure.push_back(std::pow(10.0, logp_val)); }  // преобразование lg в числовое значение и запись в pressure
+    for (float p = -5.0; p <= 5.0; p += 0.01) {
+        logp.push_back(p);
+    } // добавление значения десятичного логарифма давления в массив logp
+    for (double logp_val : logp) {
+        pressure.push_back(std::pow(10.0, logp_val));
+    } // преобразование lg в числовое значение и запись в pressure
+    
     float p0 = *std::max_element(pressure.begin(), pressure.end());
-    float m0 = p0 * bar2cgs / g ;
-    for (float p : pressure) { m.push_back(p * bar2cgs / g); }                      // масса атмосферной колонны
+    float m0 = p0 * bar2cgs / g;
+
+    for (float p : pressure) {
+        m.push_back(p * bar2cgs / g);
+    } // масса атмосферной колонны
+
     std::vector<double> tp_prof(m.size());
     for (size_t i = 0; i < m.size(); ++i) {
-            tp_prof[i] = tpprofile(m[i], m0, 150, t_irr, kappa_S0, kappa_0, kappa_cia, beta_S0, beta_L0, el1, el3);
+        tp_prof[i] = tpprofile(m[i], m0, 103, t_irr, kappa_S0, kappa_0, kappa_cia, beta_S0, beta_L0, el1, el3);
+        if (tp_prof[i] <= temp_max) {
+            tp_prof[i] = tp_prof[i - 1];
+        }
     }
 
     if (pdata.name == "15 Sge b" ||
         pdata.name == "HD 209458 b" ||
-        pdata.name == "HAT-P-49 b" ||
-        pdata.name == "2MASS J0337-1758") {
+        pdata.name == "HAT-P-49 b") {
         std::ofstream latest("profiles/tpp_" + pdata.name + ".dat");
         for (size_t i = 0; i < m.size(); ++i) {
             latest << tp_prof[i] << std::setw(15) << pressure[i] << std::endl; // запись температуры/давления
@@ -636,7 +676,7 @@ void getPrepared(int i) {
     csvParser();
     getKeplerThird();
     getRGM();
-    std::cout << colTxt("========================================", 30).str() << std::endl;    
+    std::cout << colTxt("========================================", 30).str() << std::endl;
 }
 
 // Функции меню
@@ -657,9 +697,6 @@ void menuAction() {
         break;
     case 4:
         pdata.name = "15 Sge b";
-        getPrepared(2);
-        tpoutput();
-        pdata.name = "2MASS J0337-1758";
         getPrepared(2);
         tpoutput();
         pdata.name = "HAT-P-49 b";
@@ -683,7 +720,7 @@ void menuAction() {
 
 int main() {
     getTempAny();
-    geometicToBondAlbedo();
+    getBondAlbedo();
     menuSelect();
     menuAction();
     return 0;
