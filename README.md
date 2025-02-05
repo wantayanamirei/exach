@@ -1,4 +1,5 @@
 # exoplanet-atmos-characterizer
+### проект, модель, да ну как же я тебя ненавижу, экзач, экза.ч, exa.ch и прочее...
 Characterizer of exoplanet atmospheric parameters.
 
 Улучшение модели. Решение двух главных проблем:
