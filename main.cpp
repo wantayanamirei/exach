@@ -270,8 +270,7 @@ void getTempAny() {
     }
     if (pdata.temp_measured > -274) {
         temp_any = pdata.temp_measured; // бОльший приоритет измеренной температуре, нежели посчитанной по T_eff
-    }
-    else {
+    } else {
         std::cout << "Нет температуры\n";
     }
 }
@@ -280,7 +279,7 @@ void getBondAlbedo() {
     if (pdata.geometric_albedo != -274) {
         bond_albedo = pdata.geometric_albedo * 0.816019098804724;
         std::cout << colTxt("BA - ✓", 32).str() << std::endl;
-    } else { 
+    } else {
         std::cout << colTxt("BA - × | βs = 1.0", 31).str() << std::endl;
         bond_albedo = 0.0;
     }
@@ -305,6 +304,7 @@ int is_EIP = 0;
 int is_ETP = 0;
 int is_EEP = 0;
 const int max_is_value = 8;
+int planet_type = 0;
 
 // 33-31-34-36-32
 
@@ -318,7 +318,7 @@ void isThisDwarf() {
     if (is_Dwarf > max_is_value) is_Dwarf = max_is_value;
 
     std::string bars(is_Dwarf, '|');
-    std::string remainingBars((max_is_value - is_Dwarf), '|');
+    std::string remainingBars((max_is_value - is_Dwarf), '-');
     std::cout << "[" << colTxt(bars, 33).str() << colTxt(remainingBars, 30).str() << "] D" << std::endl;
 }
 
@@ -335,7 +335,7 @@ void isThisEGP() {
     if (pdata.mass >= 4 && pdata.radius >= 7) is_EGP = max_is_value;
 
     std::string bars(is_EGP, '|');
-    std::string remainingBars((max_is_value - is_EGP), '|');
+    std::string remainingBars((max_is_value - is_EGP), '-');
     std::cout << "[" << colTxt(bars, 31).str() << colTxt(remainingBars, 30).str() << "] G" << std::endl;
 }
 
@@ -345,7 +345,7 @@ void isThisEIP() {
     if (pdata.mass > 0.014 && pdata.mass <= 0.10) is_EIP += 4;
 
     std::string bars(is_EIP, '|');
-    std::string remainingBars((max_is_value - is_EIP), '|');
+    std::string remainingBars((max_is_value - is_EIP), '-');
     std::cout << "[" << colTxt(bars, 34).str() << colTxt(remainingBars, 30).str() << "] I" << std::endl;
 }
 
@@ -355,7 +355,7 @@ void isThisETP() {
     if (pdata.mass > 0.006 && pdata.mass <= 0.03) is_ETP += 4;
 
     std::string bars(is_ETP, '|');
-    std::string remainingBars((max_is_value - is_ETP), '|');
+    std::string remainingBars((max_is_value - is_ETP), '-');
     std::cout << "[" << colTxt(bars, 36).str() << colTxt(remainingBars, 30).str() << "] T" << std::endl;
 }
 
@@ -365,7 +365,7 @@ void isThisEEP() {
     if (pdata.mass >= 0 && pdata.mass <= 0.01) is_EEP += 4;
 
     std::string bars(is_EEP, '|');
-    std::string remainingBars((max_is_value - is_EEP), '|');
+    std::string remainingBars((max_is_value - is_EEP), '-');
     std::cout << "[" << colTxt(bars, 32).str() << colTxt(remainingBars, 30).str() << "] E" << std::endl;
 }
 
@@ -378,14 +378,14 @@ void isThisAnyOfEarth() {
     if (pdata.mass > 0.007) is_sEarth++;
 
     std::vector<int> values = {is_mEarth, is_sEarth};
-    std::vector<std::string> names = {"Это мини-земля", "Это супер-земля"};
+    std::vector<std::string> names = {"мини-земля", "супер-земля"};
     int max_index = 0;
     for (int i = 1; i < values.size(); ++i) {
         if (values[i] > values[max_index]) {
             max_index = i;
         }
     }
-    std::cout << names[max_index] << std::endl;
+    std::cout << names[max_index];
 }
 
 // Обработка значений EGP - определение класса газового гиганта по классификации Сударского
@@ -396,40 +396,75 @@ void isThisTheSudarskyPlanet() {
     int is_classIII = 0;
     int is_classIV = 0;
     int is_classV = 0;
+    int max_is_class_value = 10;
 
     if (pdata.mass_sini >= 0.17 || pdata.mass >= 0.17 && pdata.mass < 50.0) is_sudarsky++;
-    if (bond_albedo > 0.54 && bond_albedo < 0.61) is_classI++;
-    if (temp_any < 195) is_classI++;
+    if (bond_albedo >= 0.54 && bond_albedo <= 0.61) is_classI++;
+    if (temp_any < 195) is_classI += 2;
 
     if (bond_albedo >= 0.81) is_classII++;
-    if (temp_any >= 195 && temp_any < 250) is_classII++;
+    if (temp_any >= 195 && temp_any < 250) is_classII += 2;
 
-    if (bond_albedo >= 0.09 && bond_albedo < 0.20) is_classIII++;
-    if (temp_any >= 350 && temp_any < 800) is_classIII++;
+    if (bond_albedo >= 0.09 && bond_albedo <= 0.20) is_classIII++;
+    if (temp_any >= 350 && temp_any < 800) is_classIII += 2;
 
     if (bond_albedo < 0.09 && bond_albedo > 0) is_classIV++;
-    if (temp_any >= 800 && temp_any < 1050) is_classIV++;
+    if (temp_any >= 800 && temp_any < 1050) is_classIV += 2;
 
-    if (bond_albedo > 0.50 && bond_albedo < 0.60) is_classV++;
-    if (temp_any >= 1050) is_classV++;
+    if (bond_albedo >= 0.50 && bond_albedo <= 0.60) is_classV++;
+    if (temp_any >= 1050) is_classV += 2;
 
-    if (is_classI > 0) is_sudarsky = is_sudarsky + is_classI / 3.0;
-    if (is_classII > 0) is_sudarsky = is_sudarsky + is_classII / 3.0;
-    if (is_classIII > 0) is_sudarsky = is_sudarsky + is_classIII / 3.0;
-    if (is_classIV > 0) is_sudarsky = is_sudarsky + is_classIV / 3.0;
-    if (is_classV > 0) is_sudarsky = is_sudarsky + is_classV / 3.0;
+    if (is_classI > 0) is_sudarsky = is_sudarsky + is_classI;
+    if (is_classII > 0) is_sudarsky = is_sudarsky + is_classII;
+    if (is_classIII > 0) is_sudarsky = is_sudarsky + is_classIII;
+    if (is_classIV > 0) is_sudarsky = is_sudarsky + is_classIV;
+    if (is_classV > 0) is_sudarsky = is_sudarsky + is_classV;
 
     std::vector<int> is_class = {is_classI, is_classII, is_classIII, is_classIV, is_classV};
     std::vector<int> ints = {2, 4, 6, 8, 10};
+
     int max_index = 0;
     for (int i = 1; i < is_class.size(); ++i) {
-        if (is_class[i] > is_class[max_index]) max_index = i;
+        if (is_class[i] > is_class[max_index]) {
+            max_index = i;
+        }
     }
-    if (is_class[max_index] == is_classI) std::cout << "[" << colTxt("██", 34).str() << colTxt("||||||||", 30).str() << "] Class I" << std::endl;
-    if (is_class[max_index] == is_classII) std::cout << "[" << colTxt("||", 30).str() << colTxt("██", 36).str() << colTxt("||||||", 30).str() << "] Class II" << std::endl;
-    if (is_class[max_index] == is_classIII) std::cout << "[" << colTxt("||||", 30).str() << colTxt("██", 33).str() << colTxt("||||", 30).str() << "] Class III" << std::endl;
-    if (is_class[max_index] == is_classIV) std::cout << "[" << colTxt("||||||", 30).str() << colTxt("██", 33).str() << colTxt("||", 30).str() << "] Class IV" << std::endl;
-    if (is_class[max_index] == is_classV) std::cout << "[" << colTxt("||||||||", 30).str() << colTxt("██", 31).str() << "] Class V" << std::endl;
+
+    // Проверяем, есть ли другие элементы с таким же максимальным значением
+    bool is_ambiguous = false;
+    for (int i = 0; i < is_class.size(); ++i) {
+        if (i != max_index && is_class[i] == is_class[max_index]) {
+            is_ambiguous = true;
+            break;
+        }
+    }
+
+    if (is_ambiguous) {
+        std::cout << ": неопределенный класс" << std::endl;
+    } else {
+        std::string bars(ints[max_index], '|');
+        std::string remainingBars((max_is_class_value - ints[max_index]), '-');
+        std::cout << "[" << colTxt(bars, 37).str() << colTxt(remainingBars, 37).str() << "] ";
+        switch (ints[max_index]) {
+        case 2:
+            std::cout << "I";
+            break;
+        case 4:
+            std::cout << "II";
+            break;
+        case 6:
+            std::cout << "III";
+            break;
+        case 8:
+            std::cout << "IV";
+            break;
+        case 10:
+            std::cout << "V";
+            break;
+        default:
+            break;
+        }
+    }
 }
 
 // Вызов всех функций для main()
@@ -444,7 +479,7 @@ void gadanieCall() {
 // Подведение итогов функций is_any
 void gadanieResults() {
     std::vector<int> values = {is_Dwarf, is_EGP, is_EIP, is_ETP, is_EEP};
-    std::vector<std::string> names = {"Это КК", "Это EGP", "Это EIP", "Это ETP", "Это EEP"};
+    std::vector<std::string> names = {"Это КК", "Это EGP: ", "Это EIP", "Это ETP", "Это EEP: "};
 
     // Находим максимальное значение
     int max_index = 0;
@@ -466,11 +501,22 @@ void gadanieResults() {
     if (is_ambiguous) {
         std::cout << "Неопределенный тип" << std::endl;
     } else {
-        std::cout << names[max_index] << std::endl; // Выводим максимальное значение
-        if (values[max_index] == is_EGP) isThisTheSudarskyPlanet();
-        if (values[max_index] == is_EEP) isThisAnyOfEarth();
+        std::cout << names[max_index]; // Выводим максимальное значение
+        if (values[max_index] == is_Dwarf) planet_type = 1;
+        if (values[max_index] == is_EGP) {
+            isThisTheSudarskyPlanet();
+            planet_type = 2;
+        }
+        if (values[max_index] == is_EIP) planet_type = 3;
+        if (values[max_index] == is_ETP) planet_type = 4;
+        if (values[max_index] == is_EEP) {
+            isThisAnyOfEarth();
+            planet_type = 5;
+        }
+        std::cout << std::endl;
     }
 }
+
 ///////////////////////////////////////
 //                                   //
 //             ЧАСТЬ IV              //
@@ -481,12 +527,52 @@ void gadanieResults() {
 // LASCIATE OGNE SPERANZA, VOI CH'ENTRATE   //
 // - Данте Алигьери. Надпись на вратах Ада. //
 
-double tpprofile(float bond_albedo, float m, float m0, float t_int, float t_irr, float kappa_S, float kappa_0, float kappa_cia, float beta_S0, float beta_L0, float el1, float el3, float pressure) {
+double tpprofile(float bond_albedo, float m, float m0, float t_int, float t_irr, float kappa_S, float kappa_0, float kappa_cia, float beta_S0, float beta_L0, float el1, float el3, float pressure, int pl_type) {
     float albedo = bond_albedo;
-    float kappa_L = kappa_0 + kappa_cia * m / m0; // при S > L - возникновение температурной инверсии
-    float beta_S = kappa_S * m / beta_S0;         // параметр рассеяния
-    float coeff1 = 0.25 * std::pow(t_int, 4);     // коэфф. перед первыми квадратными скобками
-    float coeff2 = 0.125 * std::pow(t_irr, 4);    // коэфф. перед вторыми квадратными скобками
+
+    float n_S = -0.08;
+    float l_S = 0.01;
+    float ssa_S0 = 1;
+    float asymmetry_S0 = 1;
+
+    switch (pl_type) {
+    case 1: // КК
+        break;
+    case 2: // ГГ
+        ssa_S0 = 0.7 * (m / m0);
+        break;
+    case 3: // ХГ
+        break;
+    case 4: // МН
+        break;
+    case 5: // ЗГ
+        ssa_S0 = 0.87;
+        break;
+    default:
+        ssa_S0 = 0.5;
+        break;
+    }
+
+    kappa_S *= pow((m / m0), n_S);
+    beta_S0 *= pow((m / m0), l_S); // sqrt((1 - ssa_S0) / (1 - ssa_S0 * asymmetry_S0));
+
+    float kappa_L = kappa_0 + kappa_cia * (m / m0); // при S > L - возникновение температурной инверсии
+    float beta_S = kappa_S * m / beta_S0;           // параметр рассеяния
+    float coeff1 = 0.25 * std::pow(t_int, 4);       // коэфф. перед первыми квадратными скобками
+    float coeff2 = 0.125 * std::pow(t_irr, 4);      // коэфф. перед вторыми квадратными скобками
+
+    // Добавляем фотохимический нагрев
+    float thermal_conductivity = 0.0;
+    float photoheating = 0.0;
+    float shortwave_heating = 0.0;
+
+    // условие для верхних слоев
+    if ((m / m0) < 1e-6) {
+        thermal_conductivity = 800.0 * std::exp(-m / (m0 * pow(10, -9.3)));
+        photoheating = 200.0 * std::exp(-m / (m0 * pow(10, -8.5)));
+        shortwave_heating = 7200.0 * std::exp(-m / (m0 * 1e-10));
+    }
+
     float term1 =
         1.0 / el1 +
         m / (el3 * pow(beta_L0, 2)) *
@@ -503,21 +589,8 @@ double tpprofile(float bond_albedo, float m, float m0, float t_int, float t_irr,
         kappa_cia * pow(beta_S0, 2) / (el3 * m0 * pow(kappa_S, 2) * pow(beta_L0, 2)) *
         (0.5 - boost::math::expint(3, beta_S));
 
-    // Добавляем фотохимический нагрев
-    float thermal_conductivity = 0.0;
-    float photoheating = 0.0;
-    float shortwave_heating = 0.0;
-
-    // условие для верхних слоев
-    if (pressure < 1e-5) {
-        thermal_conductivity = 500.0 * std::exp(-m / (m0 * 1e-9));
-        photoheating = 1500.0 * std::exp(-m / (m0 * 1e-9)); 
-        shortwave_heating = 2000.0 * std::exp(-m / (m0 * 1e-10));
-        term1 *= 1.02;
-        term2 *= 0.98;
-        term3 *= 0.99;
-        term4 *= 1.0;
-    }
+    // %beta_{S_0} ~ = ~ sqrt{ alignc {1-%omega_{S_0}} over {1 - %omega_{S_0} cdot g_{S_0}(P)
+    // g_{S_0} = g_{S_0} cdot (P /  P_0^%gamma
 
     float result = pow((coeff1 * term1 + coeff2 * (term2 + term3 + term4) + 1e6 * temp_any * (photoheating + thermal_conductivity + shortwave_heating)), 0.25);
     return result;
@@ -528,52 +601,75 @@ void tpoutput() {
     const double au_to_cantimeters = 1.49598e13;
     pdata.semi_major_axis = pdata.semi_major_axis * au_to_cantimeters;
     pdata.star_radius = pdata.star_radius * rsun_to_cm;
-    
-    float t_irr = pow(2, 0.5) * pdata.star_teff * 
-                  pow((pdata.star_radius/(2*pdata.semi_major_axis)),0.5) * 
-                  pow((1 - bond_albedo),0.25);
-    
+
+    float t_irr = pow(2, 0.5) * pdata.star_teff *
+                  pow((pdata.star_radius / (2 * pdata.semi_major_axis)), 0.5) *
+                  pow((1 - bond_albedo), 0.25);
+
     pdata.semi_major_axis /= au_to_cantimeters;
     pdata.star_radius /= rsun_to_cm;
 
-    float g = pdata.surface_gravity * 1e2;                 // ускорение свободного падения в СГС
-    float kappa_S0 = 0.08;                                 // коротковолновая прозрачность; ↗↗ - возникновение антипарникового эффекта
-    float kappa_0 = 0.02;                                  // ИК и near-ИК прозрачность - влияет на kappa_L
-    float kappa_cia = 0.11;                                 // CIA opacity normalization
+    float g_cgs = pdata.surface_gravity * 1e2;                 // ускорение свободного падения в СГС
+    float kappa_S0 = 0.06;                                     // коротковолновая прозрачность; ↗↗ - возникновение антипарникового эффекта
+    float kappa_0 = 0.023;                                     // ИК и near-ИК прозрачность - влияет на kappa_L
+    float kappa_cia = 0.12;                                    // CIA opacity normalization
     float beta_S0 = (1.0 - bond_albedo) / (1.0 + bond_albedo); // коротковолновый параметр рассеяния; ↗↗ - Ab ↘↘; весь TPP смещается на более низкие температуры из-за зависимости от (1 - Ab)
-    float beta_L0 = 0.97;                                   // длинноволновый параметр рассеяния; ↘↘ - TPP смещается в более теплую область
-    float el1 = 3.0 / 8.0;                                 // первый длинноволновый коэффициент Эддингтона
-    float el3 = 1.0 / 3.0;                                 // второй длинноволновый коэффициент Эддингтона
+    float beta_L0 = 0.983;                                     // длинноволновый параметр рассеяния; ↘↘ - TPP смещается в более теплую область
+    float el1 = 3.0 / 8.0;                                     // первый длинноволновый коэффициент Эддингтона
+    float el3 = 1.0 / 3.0;                                     // второй длинноволновый коэффициент Эддингтона
 
     std::vector<double> logp;
     std::vector<double> pressure;
     std::vector<double> m;
     double bar2cgs = 1e6;
-    
+
+    float pmin = -9.0;
+    float pmax = 2.01;
+    switch (planet_type) {
+    case 1: // КК
+        pmin = -7.0;
+        pmax = 3.01;
+        break;
+    case 2: // ГГ
+        pmax = 2.01;
+        break;
+    case 3: // ХГ
+        break;
+    case 4: // МН
+        break;
+    case 5: // ЗГ
+        pmin = -9.0;
+        pmax = 0.01;
+        break;
+    default:
+        break;
+    }
+
     // Увеличение разрешения
-    for (float p = -10.0; p <= 2.01; p += 0.01) {
+    for (float p = pmin; p <= pmax; p += 0.01) {
         logp.push_back(p);
     }
-    
+
     for (double logp_val : logp) {
         pressure.push_back(pow(10.0, logp_val));
     }
-    
+
     float p0 = *max_element(pressure.begin(), pressure.end());
-    float m0 = p0 * bar2cgs / g;
-    
+    float m0 = p0 * bar2cgs / g_cgs;
+
     for (float p : pressure) {
-        m.push_back(p * bar2cgs / g);
+        m.push_back(p * bar2cgs / g_cgs);
     }
 
     std::vector<double> tp_prof(m.size());
     for (size_t i = 0; i < m.size(); ++i) {
-        tp_prof[i] = tpprofile(bond_albedo, m[i], m0, 108, t_irr, kappa_S0, kappa_0, kappa_cia, beta_S0, beta_L0, el1, el3, pressure[i]);
+        tp_prof[i] = tpprofile(bond_albedo, m[i], m0, 108, t_irr, kappa_S0, kappa_0, kappa_cia, beta_S0, beta_L0, el1, el3, pressure[i], planet_type);
     }
 
-    if (pdata.name == "15 Sge b" ||
-        pdata.name == "HD 209458 b" ||
-        pdata.name == "HAT-P-49 b") {
+    if (pdata.name == "Sun e" ||
+        pdata.name == "TRAPPIST-1 e" ||
+        pdata.name == "HAT-P-49 b" ||
+        pdata.name == "HD 209458 b") {
         std::ofstream latest("profiles/tpp_" + pdata.name + ".dat");
         for (size_t i = 0; i < m.size(); ++i) {
             latest << tp_prof[i] << std::setw(15) << pressure[i] << std::endl; // запись температуры/давления
@@ -655,6 +751,7 @@ void printOptions(const std::vector<std::string> &options, int selected) {
 
 // Вызов меню
 void menuSelect() {
+    selected = 0;
     int option = 6;        // кол-во опций меню
     bool selecting = true; // true, если мы что-то выбираем
 
@@ -715,6 +812,8 @@ void menuAction() {
         break;
     case 2:
         getPrepared(1);
+        gadanieCall();
+        gadanieResults();
         tpoutput();
         break;
     case 3:
@@ -723,14 +822,21 @@ void menuAction() {
         gadanieResults();
         break;
     case 4:
-        pdata.name = "15 Sge b";
+        pdata.name = "Sun e";
         getPrepared(2);
+        planet_type = 2;
+        tpoutput();
+        pdata.name = "TRAPPIST-1 e";
+        getPrepared(2);
+        planet_type = 5;
         tpoutput();
         pdata.name = "HAT-P-49 b";
         getPrepared(2);
+        planet_type = 2;
         tpoutput();
         pdata.name = "HD 209458 b";
         getPrepared(2);
+        planet_type = 2;
         tpoutput();
         break;
     default:
